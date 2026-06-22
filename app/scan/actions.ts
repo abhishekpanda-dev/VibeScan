@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { StartScanActionState } from "@/app/scan/action-state";
-import { ensureProfileRecord, getAuthenticatedSupabaseUser } from "@/lib/scan-data";
+import { ensureProfileRecord } from "@/lib/profiles";
+import { getAuthenticatedSupabaseUser } from "@/lib/scan-data";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getScanEligibility, validateScanUrl } from "@/lib/scan-utils";
 

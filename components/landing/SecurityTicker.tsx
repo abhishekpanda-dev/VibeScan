@@ -17,7 +17,7 @@ export default function SecurityTicker() {
             ) : (
               item.level
             )}{" "}
-            — {item.text}
+            - {item.text}
           </span>
         ))}
       </div>

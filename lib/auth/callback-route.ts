@@ -3,6 +3,7 @@ import "server-only";
 import { type EmailOtpType, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSafeRedirectPath } from "@/lib/auth/redirects";
+import { ensureAuthenticatedUserProfile } from "@/lib/profiles";
 import type { Database } from "@/types/database";
 
 const allowedEmailOtpTypes: EmailOtpType[] = [
@@ -192,6 +193,26 @@ async function verifyOtpCandidates(
   };
 }
 
+async function completeProfileBootstrap(
+  request: NextRequest,
+  supabase: SupabaseClient<Database>,
+  nextPath: string,
+) {
+  try {
+    await ensureAuthenticatedUserProfile(supabase);
+  } catch {
+    return NextResponse.redirect(
+      buildAuthRedirect(
+        request,
+        nextPath,
+        "Your account was verified, but we could not finish setting up your profile.",
+      ),
+    );
+  }
+
+  return NextResponse.redirect(new URL(nextPath, request.url));
+}
+
 export async function completeAuthCallback(
   request: NextRequest,
   createSupabaseServerClient: () => Promise<SupabaseClient<Database>>,
@@ -224,7 +245,7 @@ export async function completeAuthCallback(
         );
       }
 
-      return NextResponse.redirect(new URL(nextPath, request.url));
+      return completeProfileBootstrap(request, supabase, nextPath);
     }
 
     const accessToken = getFirstSearchParam(request, "access_token");
@@ -246,7 +267,7 @@ export async function completeAuthCallback(
         );
       }
 
-      return NextResponse.redirect(new URL(nextPath, request.url));
+      return completeProfileBootstrap(request, supabase, nextPath);
     }
 
     const verifyCandidates = createVerifyCandidates(request);
@@ -264,7 +285,7 @@ export async function completeAuthCallback(
         );
       }
 
-      return NextResponse.redirect(new URL(nextPath, request.url));
+      return completeProfileBootstrap(request, supabase, nextPath);
     }
 
     return NextResponse.redirect(

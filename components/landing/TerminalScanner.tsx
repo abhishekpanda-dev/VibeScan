@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-
 import { terminalLines, type TerminalTone } from "@/components/landing/content";
 
 const toneClasses: Record<TerminalTone, string> = {
@@ -71,7 +70,7 @@ export default function TerminalScanner() {
         <span className="h-2.5 w-2.5 rounded-full bg-[#FEBC2E]" />
         <span className="h-2.5 w-2.5 rounded-full bg-[#28C840]" />
         <span className="ml-2 font-mono text-[11px] text-[var(--muted)]">
-          vibescan — scanning myapp.vercel.app
+          vibescan - scanning myapp.vercel.app
         </span>
       </div>
       <div
@@ -89,7 +88,7 @@ export default function TerminalScanner() {
         {showCursor ? (
           <div className="mb-0.5 flex items-start gap-[10px]">
             <span className="w-0 shrink-0 text-[var(--muted)]" aria-hidden />
-            <span className="animate-terminal-blink text-[var(--white)]">█</span>
+            <span className="animate-terminal-blink text-[var(--white)]">|</span>
           </div>
         ) : null}
       </div>

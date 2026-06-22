@@ -24,7 +24,7 @@ const fixLines = [
   { text: "", tone: "spacer" },
   { text: "## Files to change", tone: "muted" },
   { text: "- lib/supabase/client.ts", tone: "fix" },
-  { text: "- .env.local → rename to SUPABASE_", tone: "fix" },
+  { text: "- .env.local -> rename to SUPABASE_", tone: "fix" },
   { text: "  SERVICE_ROLE_KEY (no NEXT_PUBLIC_)", tone: "fix" },
 ] as const;
 
@@ -43,7 +43,7 @@ export default function ReportPreview() {
               3
             </div>
             <div className="mb-8 text-[13px] text-[var(--muted)]">
-              critical findings — myapp.vercel.app
+              critical findings - myapp.vercel.app
             </div>
             {reportFindings.map((finding) => (
               <div
@@ -67,7 +67,7 @@ export default function ReportPreview() {
 
           <div className="p-8 lg:p-10">
             <div className="mb-2.5 font-mono text-[12px] uppercase tracking-[1px] text-[var(--muted)]">
-              AI-Ready Fix — paste into Claude Code
+              AI-Ready Fix - paste into Claude Code
             </div>
             <div className="rounded-[8px] border border-[rgba(0,212,255,0.15)] bg-[var(--bg3)] p-4 font-mono text-[12px] leading-[1.7] text-[#8A93A8]">
               {fixLines.map((line, index) => {
@@ -76,9 +76,15 @@ export default function ReportPreview() {
                 }
 
                 let className = "text-[#8A93A8]";
-                if (line.tone === "title") className = "mb-2.5 font-semibold text-[var(--cyan)]";
-                if (line.tone === "muted") className = "text-[var(--muted)]";
-                if (line.tone === "fix") className = "text-[#3DCA6A]";
+                if (line.tone === "title") {
+                  className = "mb-2.5 font-semibold text-[var(--cyan)]";
+                }
+                if (line.tone === "muted") {
+                  className = "text-[var(--muted)]";
+                }
+                if (line.tone === "fix") {
+                  className = "text-[#3DCA6A]";
+                }
 
                 return (
                   <div key={`${line.text}-${index}`} className={`${className} whitespace-pre-wrap`}>

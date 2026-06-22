@@ -1,6 +1,7 @@
 import "server-only";
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { ensureProfileRecord } from "@/lib/profiles";
 import {
   createFindingsTotal,
   derivePassChecks,
@@ -318,143 +319,6 @@ type AuthenticatedAppUser = {
   id: string;
 };
 
-function decodeJwtClaims(accessToken: string) {
-  const [, payload] = accessToken.split(".");
-
-  if (!payload) {
-    return null;
-  }
-
-  try {
-    const normalizedPayload = payload.replace(/-/g, "+").replace(/_/g, "/");
-    const padding = "=".repeat((4 - (normalizedPayload.length % 4)) % 4);
-    const decodedPayload = Buffer.from(
-      normalizedPayload + padding,
-      "base64",
-    ).toString("utf8");
-    const claims = JSON.parse(decodedPayload) as Record<string, unknown>;
-
-    return {
-      aud: typeof claims.aud === "string" ? claims.aud : null,
-      email: typeof claims.email === "string" ? claims.email : null,
-      exp: typeof claims.exp === "number" ? claims.exp : null,
-      role: typeof claims.role === "string" ? claims.role : null,
-      sessionId:
-        typeof claims.session_id === "string" ? claims.session_id : null,
-      sub: typeof claims.sub === "string" ? claims.sub : null,
-    };
-  } catch {
-    return null;
-  }
-}
-
-async function runProfileAccessDiagnostics(
-  supabase: SupabaseClient<Database>,
-  userId: string,
-) {
-  const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  let userScopedProfile: {
-    error: string | null;
-    profile: Pick<
-      Database["public"]["Tables"]["profiles"]["Row"],
-      "created_at" | "email" | "id"
-    > | null;
-  } | null = null;
-
-  if (session?.access_token) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (supabaseUrl && supabaseAnonKey) {
-      const diagnosticClient = createClient<Database>(
-        supabaseUrl,
-        supabaseAnonKey,
-        {
-          accessToken: async () => session.access_token,
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-          },
-        },
-      );
-      const { data, error } = await diagnosticClient
-        .from("profiles")
-        .select("id, email, created_at")
-        .eq("id", userId)
-        .maybeSingle();
-
-      userScopedProfile = {
-        error: error?.message ?? null,
-        profile: data
-          ? {
-              created_at: data.created_at,
-              email: data.email,
-              id: data.id,
-            }
-          : null,
-      };
-    }
-  }
-
-  let adminProfile: {
-    error: string | null;
-    profile: Pick<
-      Database["public"]["Tables"]["profiles"]["Row"],
-      "created_at" | "email" | "id"
-    > | null;
-  } | null = null;
-
-  try {
-    const adminSupabase = createSupabaseAdminClient();
-    const { data, error } = await adminSupabase
-      .from("profiles")
-      .select("id, email, created_at")
-      .eq("id", userId)
-      .maybeSingle();
-
-    adminProfile = {
-      error: error?.message ?? null,
-      profile: data
-        ? {
-            created_at: data.created_at,
-            email: data.email,
-            id: data.id,
-          }
-        : null,
-    };
-  } catch (error) {
-    adminProfile = {
-      error: error instanceof Error ? error.message : "Unknown admin error",
-      profile: null,
-    };
-  }
-
-  const diagnostics = {
-    adminProfile,
-    decodedAccessTokenClaims: session?.access_token
-      ? decodeJwtClaims(session.access_token)
-      : null,
-    sessionError: sessionError?.message ?? null,
-    sessionState: summarizeSession(session),
-    user: summarizeUser(user),
-    userError: userError?.message ?? null,
-    userScopedProfile,
-    userId,
-  };
-
-  logAuthDebug("profileAccessDiagnostics", diagnostics);
-
-  return diagnostics;
-}
-
 export async function getAuthenticatedSupabaseUser(
   supabase: SupabaseClient<Database>,
 ): Promise<AuthenticatedAppUser | null> {
@@ -482,61 +346,6 @@ export async function getAuthenticatedSupabaseUser(
     email: user.email ?? null,
     id: user.id,
   };
-}
-
-async function getExistingProfileRecord(
-  supabase: SupabaseClient<Database>,
-  userId: string,
-) {
-  const { data: existingProfile, error: profileError } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", userId)
-    .maybeSingle();
-
-  logAuthDebug("getExistingProfileRecord", {
-    existingProfile: existingProfile
-      ? {
-          createdAt: existingProfile.created_at,
-          email: existingProfile.email,
-          id: existingProfile.id,
-        }
-      : null,
-    profileError: profileError?.message ?? null,
-    userId,
-  });
-
-  if (profileError) {
-    throw new Error(profileError.message);
-  }
-
-  return existingProfile;
-}
-
-export async function ensureProfileRecord(
-  supabase: SupabaseClient<Database>,
-  userId: string,
-  email: string | null | undefined,
-) {
-  const existingProfile = await getExistingProfileRecord(supabase, userId);
-
-  if (existingProfile) {
-    return existingProfile;
-  }
-
-  logAuthDebug("ensureProfileRecord.missingProfile", {
-    email: email ?? null,
-    userId,
-  });
-
-  const diagnostics = await runProfileAccessDiagnostics(supabase, userId);
-
-  throw new Error(
-    `Authenticated user ${userId} could not read their profile row. ` +
-      "The profile should already exist. " +
-      `User-token diagnostic found row: ${Boolean(diagnostics.userScopedProfile?.profile)}. ` +
-      `Service-role diagnostic found row: ${Boolean(diagnostics.adminProfile?.profile)}.`,
-  );
 }
 
 export async function getAuthenticatedAppContext() {

@@ -8,7 +8,7 @@ export default function Footer() {
         <p className="text-[13px] text-[var(--muted)]">
           Built for indie hackers who ship fast and want to sleep at night.
         </p>
-        <p className="text-[12px] text-[var(--muted)]">© 2026 VibeScan</p>
+        <p className="text-[12px] text-[var(--muted)]">Copyright 2026 VibeScan</p>
       </div>
     </footer>
   );
